@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+      }
+      #map {
+        width: 100%;
+        position: absolute;
+        top: 57px;
+        bottom: 0;
+        padding: 0;
+        margin: 0;
+      }
+      /*Legend specific*/
+      .legend {
+        padding: 6px 8px;
+        font: 14px Arial, Helvetica, sans-serif;
+        background: white;
+        background: rgba(255, 255, 255, 0.8);
+        /*box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);*/
+        /*border-radius: 5px;*/
+        line-height: 24px;
+        color: #555;
+      }
+      .legend h4 {
+        text-align: center;
+        font-size: 16px;
+        margin: 2px 12px 8px;
+        color: #777;
+      }
+      .legend span {
+        position: relative;
+        bottom: 3px;
+      }
+      .legend i {
+        width: 18px;
+        height: 18px;
+        float: left;
+        margin: 0 8px 0 0;
+        opacity: 0.7;
+      }
+      .legend i.icon {
+        background-size: 18px;
+        background-color: rgba(255, 255, 255, 1);
+      }
+    </style>
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container">
+        <a class="navbar-brand" href="#">
+          <img id="logo" src="logo.png" width="70" height="25" /> Leaflet
+          Workshop</a
+        >
+      </div>
+    </nav>
+    <div id="map"></div>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://unpkg.com/georaster"></script>
+    <script src="https://unpkg.com/chroma-js"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+    <script src="https://unpkg.com/geoblaze"></script>
+    <script>
+      // TODO 1: initalize leaflet map
+      var map = L.map("map").setView([16.45, 102.12], 5);
+
+      // TODO 2: add OpenStreetMap basemap, Google basemap
+      var osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 24,
+        attribution:
+          '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      var ghyb = L.tileLayer(
+        "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+        {
+          maxZoom: 24,
+          attribution: '&copy; <a href="https://maps.google.com">Google</a>',
+        }
+      ).addTo(map);
+
+      // TODO 3: Add WMS Layer
+      var province = L.tileLayer
+        .wms("https://ogc.mapedia.co.th/geoserver/wms?", {
+          layers: "bioenergy:th_pro",
+          format: "image/png",
+          transparent: true,
+        })
+        .addTo(map);
+
+      // TODO 4: Get Raster file
+      var url_to_geotiff_file = "tiff/NDVI_20230621.tif";
+
+      // TODO 5 Fetch GeoTiff Raster
+      fetch(url_to_geotiff_file)
+        .then((response) => response.arrayBuffer())
+        .then((arrayBuffer) => {
+          parseGeoraster(arrayBuffer).then((georaster) => {
+            // TODO 6: Color
+            const min = georaster.mins[0];
+            const max = georaster.maxs[0];
+            const range = georaster.ranges[0];
+
+            // Define your class intervals and corresponding colors
+            var classIntervals = [
+              { min: -Infinity, max: 0.148, color: "#d7191c" },
+              { min: 0.148, max: 0.341, color: "#fdae61" },
+              { min: 0.341, max: 0.543, color: "#ffffc0" },
+              { min: 0.543, max: 0.727, color: "#a6d96a" },
+              { min: 0.727, max: Infinity, color: "#1a9641" },
+            ];
+
+            var layer = new GeoRasterLayer({
+              georaster: georaster,
+              opacity: 0.7,
+              resolution: 256,
+              pixelValuesToColorFn: function (pixelValues) {
+                var pixelValue = pixelValues[0]; // there's just one band in this raster
+
+                // if there's 255 value, don't return a color
+                if (pixelValue === 255) return null;
+
+                // Find the class interval for the pixel value
+                var interval = classIntervals.find(function (interval) {
+                  return (
+                    pixelValue >= interval.min && pixelValue < interval.max
+                  );
+                });
+
+                // Return the color corresponding to the class interval
+                return interval ? interval.color : null;
+              },
+            });
+            console.log("layer:", layer);
+            layer.addTo(map);
+
+            // TODO 7: FitBounds
+            map.fitBounds(layer.getBounds());
+
+            // TODO 8: Click Popup
+            map.on("click", function (evt) {
+              var latlng = map.mouseEventToLatLng(evt.originalEvent);
+              alert(geoblaze.identify(georaster, [latlng.lng, latlng.lat]));
+            });
+
+            // TODO 9: Add Control map
+            var baseMaps = {
+              OpenStreetMap: osm,
+              "Google Hybrid": ghyb,
+            };
+
+            var overlayMaps = {
+              NDVI: layer,
+              Province: province,
+            };
+
+            var layerControl = L.control
+              .layers(baseMaps, overlayMaps, { collapsed: false })
+              .addTo(map);
+          });
+        });
+
+      // TODO 10: Create a custom legend control
+      var legend = L.control({ position: "bottomleft" });
+
+      legend.onAdd = function (map) {
+        var div = L.DomUtil.create("div", "legend");
+        div.innerHTML += "<h4>Legend</h4>";
+        div.innerHTML +=
+          '<i style="background: #1a9641"></i><span>0.148</span><br>';
+        div.innerHTML +=
+          '<i style="background: #a6d96a"></i><span>0.341</span><br>';
+        div.innerHTML +=
+          '<i style="background: #ffffc0"></i><span>0.543</span><br>';
+        div.innerHTML +=
+          '<i style="background: #fdae61"></i><span>0.727</span><br>';
+        div.innerHTML +=
+          '<i style="background: #d7191c"></i><span> >0.727 </span><br>';
+
+        return div;
+      };
+      legend.addTo(map);
+      
+    </script>
+  </body>
+</html>

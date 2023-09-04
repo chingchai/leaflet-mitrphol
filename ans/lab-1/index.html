@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Leaflet Workshop for Mitrphol" />
+    <meta name="keywords" content="Leaflet, HTML, CSS, JavaScript" />
+    <meta name="author" content="MAPEDIA, Mitrphol" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leaflet Map</title>
+    <style type="text/css">
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      // TO DO 1: Add initial map
+      var map = L.map("map").setView([16.47, 102.12], 16);
+
+      // TO DO 2: Add basemap tiles
+      var osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 24,
+        attribution:
+          '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      var ghyb = L.tileLayer(
+        "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+        {
+          maxZoom: 24,
+          attribution: '&copy; <a href="https://maps.google.com">Google</a>',
+        }
+      ).addTo(map);
+
+      // TODO 3: Add Point, Polyline, Polygon and GeoJSON Layer
+      // Point
+      var marker = L.marker([16.471342, 102.1245155]).addTo(map);
+
+      var marker2 = L.marker([16.470728171424252, 102.12603517320869]).addTo(
+        map
+      );
+      // Polyline
+      var line1 = L.polyline([
+        [16.471570772197136, 102.12548781401591],
+        [16.47127032680005, 102.12747920303316],
+        [16.469042956108588, 102.12711909021999],
+      ]).addTo(map);
+
+      // Polygon
+      var polygon1 = L.polygon([
+        [16.471911785613074, 102.12497670793975],
+        [16.471877958720167, 102.12535261949571],
+        [16.471597986846838, 102.12512837522476],
+        [16.47163636487179, 102.12492812123438],
+      ]).addTo(map);
+
+      // TODO 4: Add Marker Icon and Popup info
+      var pinpoint = L.icon({
+        iconUrl: "img/pin-point.png",
+        iconSize: [32, 32],
+      });
+      var marker3 = L.marker([16.471944, 102.1264], { icon: pinpoint })
+        .bindPopup("Hello Leafletjs Workshop!")
+        .addTo(map);
+
+      // TODO 5: Add GeoJSON Layer
+      const geojson_features = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {
+              popupContent: "โรงงานน้ำตาลมิตรผลภูเขียว",
+            },
+            geometry: {
+              coordinates: [102.11937578023844, 16.482686301941897],
+              type: "Point",
+            },
+            id: 0,
+          },
+          {
+            type: "Feature",
+            properties: {
+              popupContent: "RD 201",
+            },
+            geometry: {
+              coordinates: [
+                [102.12468262839667, 16.488212062756347],
+                [102.12477449461528, 16.483690133145245],
+                [102.12400894279762, 16.475145159677083],
+                [102.12302904863174, 16.466394245419963],
+              ],
+              type: "LineString",
+            },
+            id: 2,
+          },
+          {
+            type: "Feature",
+            properties: {
+              popupContent: "Waterbody",
+            },
+            geometry: {
+              coordinates: [
+                [
+                  [102.12306533454716, 16.474779192968143],
+                  [102.11938371411316, 16.47450540120326],
+                  [102.11893290344915, 16.47526913515989],
+                  [102.11703949865438, 16.474404530455317],
+                  [102.1156419855912, 16.473136436576],
+                  [102.11699441758674, 16.47208448876478],
+                  [102.11804630913952, 16.47038406789794],
+                  [102.11900803855889, 16.469634725152332],
+                  [102.1227647941028, 16.47090284194755],
+                  [102.12306533454716, 16.474779192968143],
+                ],
+              ],
+              type: "Polygon",
+            },
+            id: 3,
+          },
+        ],
+      };
+
+      const geojson = L.geoJSON([geojson_features], {
+        pointToLayer: function (feature, latlng) {
+          return L.marker(latlng, { icon: pinpoint });
+        },
+        weight: 6,
+        color: "red",
+        opacity: 1,
+        fillColor: "#000099",
+        fillOpacity: 0.8,
+        onEachFeature: onEachFeature,
+      }).addTo(map);
+
+      function onEachFeature(feature, layer) {
+        var popupContent = feature.properties.popupContent;
+        layer.bindPopup(popupContent);
+      }
+      // map.fitBounds(geojson.getBounds());
+
+      // TODO 6: Add WMS Layer
+      const ndwi = L.tileLayer
+        .wms("http://tile.gistda.or.th/geoserver/wms?", {
+          layers: "drought:ndwi7day_thai",
+          format: "image/png",
+          opacity: 0.5,
+          transparent: true,
+          zIndex: 5,
+        })
+        .addTo(map);
+
+      const province = L.tileLayer.wms(
+        "http://tile.gistda.or.th/geoserver/wms?",
+        {
+          layers: "forestfire:L05_Province_GISTDA_50k",
+          format: "image/png",
+          transparent: true,
+          zIndex: 5,
+        }
+      );
+
+      // TODO 7: Add Control map
+      const baseMaps = {
+        "OpenStreetMap": osm,
+        "Google Hybrid": ghyb
+      };
+
+      const overlayMaps = {
+        "geojson": geojson,
+        "province": province,
+        "ndwilayer": ndwi
+      };
+
+      const layerControl = L.control
+        .layers(baseMaps, overlayMaps, { collapsed: false })
+        .addTo(map);
+
+    </script>
+  </body>
+</html>
